@@ -103,6 +103,56 @@ export const addUserToDevice = async (req, res) => {
     }
 }
 
-export const leaveDevice = (req, res) => {
-    res.status(501).send()
+export const leaveDevice = async (req, res) => {
+    const { deviceId } = req.body
+
+    if (!deviceId) {
+        return res.status(400).json({
+            message: 'deviceId is required',
+        })
+    }
+
+    try {
+        const relation = await UserDeviceRelation.findOne({
+            userId: req.user.id,
+            deviceId,
+        })
+
+        if (!relation) {
+            return res.status(404).json({
+                message: 'User is not assigned to this device',
+            })
+        }
+
+        const device = await Device.findOne({ id: deviceId })
+        let promotedRelation = null
+
+        if (relation.userRole === 'admin') {
+            promotedRelation = await UserDeviceRelation.findOneAndUpdate(
+                {
+                    deviceId,
+                    id: { $ne: relation.id },
+                },
+                {
+                    userRole: 'admin',
+                },
+                {
+                    returnDocument: 'after',
+                },
+            )
+        }
+
+        await UserDeviceRelation.deleteOne({ id: relation.id })
+
+        if (device && device.activeUser === relation.id) {
+            device.activeUser = promotedRelation ? promotedRelation.id : null
+            await device.save()
+        }
+
+        return res.status(204).send()
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to leave device',
+        })
+    }
 }

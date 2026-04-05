@@ -10,6 +10,6 @@ const router = express.Router()
 
 router.post('/claim-device', requireAuth, claimDevice)
 router.post('/add-user-to-device', requireAuth, addUserToDevice)
-router.post('/leave-device', leaveDevice)
+router.post('/leave-device', requireAuth, leaveDevice)
 
 export default router
