@@ -9,7 +9,7 @@ import { requireAuth } from '../middleware/authMiddleware.mjs';
 const router = express.Router()
 
 router.post('/claim-device', requireAuth, claimDevice)
-router.post('/add-user-to-device', addUserToDevice)
+router.post('/add-user-to-device', requireAuth, addUserToDevice)
 router.post('/leave-device', leaveDevice)
 
 export default router
