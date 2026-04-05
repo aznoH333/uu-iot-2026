@@ -1,9 +1,36 @@
-import { randomUUID } from 'crypto';
+import { randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual } from 'crypto';
 import jwt from 'jsonwebtoken';
+import { promisify } from 'util';
 import User from '../models/User.mjs';
 
 const USER_PUBLIC_FIELDS = '-_id -loginPassword'
 const JWT_SECRET = process.env.JWT_SECRET || 'development-secret-change-me'
+const SCRYPT_KEY_LENGTH = 64
+const scrypt = promisify(scryptCallback)
+
+const hashPassword = async (password) => {
+    const salt = randomBytes(16).toString('hex')
+    const hashedPassword = await scrypt(password, salt, SCRYPT_KEY_LENGTH)
+
+    return `${salt}:${hashedPassword.toString('hex')}`
+}
+
+const verifyPassword = async (password, storedPassword) => {
+    const [salt, storedHash] = storedPassword.split(':')
+
+    if (!salt || !storedHash) {
+        return false
+    }
+
+    const hashedPassword = await scrypt(password, salt, SCRYPT_KEY_LENGTH)
+    const storedHashBuffer = Buffer.from(storedHash, 'hex')
+
+    if (hashedPassword.length !== storedHashBuffer.length) {
+        return false
+    }
+
+    return timingSafeEqual(hashedPassword, storedHashBuffer)
+}
 
 export const createUser = async (req, res) => {
     const { firstName, lastName, loginName, loginPassword } = req.body
@@ -23,12 +50,14 @@ export const createUser = async (req, res) => {
             })
         }
 
+        const hashedPassword = await hashPassword(loginPassword)
+
         const user = await User.create({
             id: randomUUID(),
             firstName,
             lastName,
             loginName,
-            loginPassword,
+            loginPassword: hashedPassword,
         })
 
         return res.status(201).json(user)
@@ -85,9 +114,9 @@ export const loginUser = async (req, res) => {
     }
 
     try {
-        const user = await User.findOne({ loginName, loginPassword })
+        const user = await User.findOne({ loginName })
 
-        if (!user) {
+        if (!user || !(await verifyPassword(loginPassword, user.loginPassword))) {
             return res.status(401).json({
                 message: 'Invalid login credentials',
             })
