@@ -1,5 +1,9 @@
 import { randomUUID } from 'crypto';
 import Device from '../models/Device.mjs';
+import User from '../models/User.mjs';
+import UserDeviceRelation from '../models/UserDeviceRelation.mjs';
+
+const USER_PUBLIC_FIELDS = '-_id -loginPassword'
 
 export const createDevice = async (req, res) => {
     try {
@@ -42,6 +46,35 @@ export const getDeviceById = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to get device',
+        })
+    }
+}
+
+export const listDeviceUsers = async (req, res) => {
+    try {
+        const device = await Device.findOne({ id: req.params.id })
+
+        if (!device) {
+            return res.status(404).json({
+                message: 'Device not found',
+            })
+        }
+
+        const relations = await UserDeviceRelation.find({ deviceId: req.params.id })
+        const userIds = relations.map((relation) => relation.userId)
+        const users = await User.find({ id: { $in: userIds } }, USER_PUBLIC_FIELDS)
+        const roleByUserId = new Map(
+            relations.map((relation) => [relation.userId, relation.userRole]),
+        )
+        const usersWithRoles = users.map((user) => ({
+            ...user.toObject(),
+            userRole: roleByUserId.get(user.id) ?? null,
+        }))
+
+        return res.status(200).json(usersWithRoles)
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to list device users',
         })
     }
 }
