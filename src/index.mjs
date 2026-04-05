@@ -1,5 +1,6 @@
 import express from 'express'
 import mongoose from 'mongoose';
+import deviceRouter from './routes/deviceRoutes.mjs';
 import userRouter from './routes/userRoutes.mjs';
 
 
@@ -15,6 +16,7 @@ app.get('/', (req, res) => {
 })
 
 app.use('/users', userRouter)
+app.use('/devices', deviceRouter)
 
 app.listen(3000, () => {
     console.log('Server is running on http://localhost:3000')
