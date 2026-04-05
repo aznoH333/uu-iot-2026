@@ -53,12 +53,27 @@ export const createDeviceMessage = async (req, res) => {
     }
 }
 
-export const getDeviceMessages = (req, res) => {
-    res.status(501).send()
-}
+export const getDeviceMessages = async (req, res) => {
+    const { deviceId } = req.params
 
-export const getDeviceMessageById = (req, res) => {
-    res.status(501).send()
+    if (!deviceId) {
+        return res.status(400).json({
+            message: 'deviceId is required',
+        })
+    }
+
+    try {
+        const deviceMessages = await DeviceMessage.find({
+            deviceId,
+            userId: req.user.id,
+        }).sort({ createdDate: 1 })
+
+        return res.status(200).json(deviceMessages)
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to get device messages',
+        })
+    }
 }
 
 export const updateDeviceMessage = (req, res) => {
