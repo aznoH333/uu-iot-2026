@@ -11,7 +11,7 @@ const router = express.Router()
 
 router.post('/:deviceId', createDeviceMessage)
 router.get('/:deviceId', requireAuth, getDeviceMessages)
-router.put('/:id', updateDeviceMessage)
-router.delete('/:id', deleteDeviceMessage)
+router.put('/:id', requireAuth, updateDeviceMessage)
+router.delete('/:id', requireAuth, deleteDeviceMessage)
 
 export default router

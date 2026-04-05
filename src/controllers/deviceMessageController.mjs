@@ -76,10 +76,61 @@ export const getDeviceMessages = async (req, res) => {
     }
 }
 
-export const updateDeviceMessage = (req, res) => {
-    res.status(501).send()
+export const updateDeviceMessage = async (req, res) => {
+    const { content } = req.body
+
+    if (!content) {
+        return res.status(400).json({
+            message: 'content is required',
+        })
+    }
+
+    try {
+        const deviceMessage = await DeviceMessage.findOneAndUpdate(
+            {
+                id: req.params.id,
+                userId: req.user.id,
+            },
+            {
+                content,
+            },
+            {
+                returnDocument: 'after',
+                runValidators: true,
+            },
+        )
+
+        if (!deviceMessage) {
+            return res.status(404).json({
+                message: 'Device message not found',
+            })
+        }
+
+        return res.status(200).json(deviceMessage)
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to update device message',
+        })
+    }
 }
 
-export const deleteDeviceMessage = (req, res) => {
-    res.status(501).send()
+export const deleteDeviceMessage = async (req, res) => {
+    try {
+        const deviceMessage = await DeviceMessage.findOneAndDelete({
+            id: req.params.id,
+            userId: req.user.id,
+        })
+
+        if (!deviceMessage) {
+            return res.status(404).json({
+                message: 'Device message not found',
+            })
+        }
+
+        return res.status(204).send()
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to delete device message',
+        })
+    }
 }
