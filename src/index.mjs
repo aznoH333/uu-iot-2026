@@ -1,5 +1,6 @@
 import express from 'express'
 import mongoose from 'mongoose';
+import deviceMessageRouter from './routes/deviceMessageRoutes.mjs';
 import deviceRouter from './routes/deviceRoutes.mjs';
 import userRouter from './routes/userRoutes.mjs';
 import userDeviceRelationRouter from './routes/userDeviceRelationRoutes.mjs';
@@ -18,6 +19,7 @@ app.get('/', (req, res) => {
 
 app.use('/users', userRouter)
 app.use('/devices', deviceRouter)
+app.use('/device-messages', deviceMessageRouter)
 app.use('/user-device-relations', userDeviceRelationRouter)
 
 app.listen(3000, () => {
