@@ -195,7 +195,7 @@ export const updateUser = async (req, res) => {
             { id: req.params.id },
             updates,
             {
-                new: true,
+                returnDocument: 'after',
                 runValidators: true,
                 projection: USER_PUBLIC_FIELDS,
             },
