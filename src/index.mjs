@@ -2,6 +2,7 @@ import express from 'express'
 import mongoose from 'mongoose';
 import deviceRouter from './routes/deviceRoutes.mjs';
 import userRouter from './routes/userRoutes.mjs';
+import userDeviceRelationRouter from './routes/userDeviceRelationRoutes.mjs';
 
 
 const app = express()
@@ -17,6 +18,7 @@ app.get('/', (req, res) => {
 
 app.use('/users', userRouter)
 app.use('/devices', deviceRouter)
+app.use('/user-device-relations', userDeviceRelationRouter)
 
 app.listen(3000, () => {
     console.log('Server is running on http://localhost:3000')
