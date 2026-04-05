@@ -9,7 +9,7 @@ import {
 
 const router = express.Router()
 
-router.post('/', createDeviceMessage)
+router.post('/:deviceId', createDeviceMessage)
 router.get('/', getDeviceMessages)
 router.get('/:id', getDeviceMessageById)
 router.put('/:id', updateDeviceMessage)

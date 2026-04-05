@@ -16,6 +16,10 @@ const deviceMessageSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
+        deviceId: {
+            type: String,
+            required: true,
+        },
         createdDate: {
             type: Date,
             required: true,

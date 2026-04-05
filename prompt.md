@@ -41,6 +41,7 @@ Represents a message from the user, device or system.
 - id: String
 - messageOrigin: "user" | "assistant" | "system"
 - userId: String
+- deviceId: String
 - createdDate: Date
 - content: String
 #### AssistantConfiguration
