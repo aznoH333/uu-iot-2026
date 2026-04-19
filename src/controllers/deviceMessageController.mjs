@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import AssistantConfiguration from '../models/AssistantConfiguration.mjs';
 import Device from '../models/Device.mjs';
 import DeviceMessage from '../models/DeviceMessage.mjs';
 import UserDeviceRelation from '../models/UserDeviceRelation.mjs';
@@ -36,13 +37,18 @@ export const createDeviceMessage = async (req, res) => {
             })
         }
 
+        if (!activeRelation.activeConfigurationId) {
+            return res.status(400).json({
+                message: 'Active device relation does not have an active configuration',
+            })
+        }
+
         const deviceMessage = await DeviceMessage.create({
             id: randomUUID(),
             messageOrigin: 'user',
-            userId: activeRelation.userId,
-            deviceId,
             createdDate: new Date(),
             content,
+            configurationId: activeRelation.activeConfigurationId,
         })
 
         return res.status(201).json(deviceMessage)
@@ -63,9 +69,25 @@ export const getDeviceMessages = async (req, res) => {
     }
 
     try {
-        const deviceMessages = await DeviceMessage.find({
-            deviceId,
+        const relation = await UserDeviceRelation.findOne({
             userId: req.user.id,
+            deviceId,
+        })
+
+        if (!relation) {
+            return res.status(404).json({
+                message: 'User is not assigned to this device',
+            })
+        }
+
+        if (!relation.activeConfigurationId) {
+            return res.status(400).json({
+                message: 'User device relation does not have an active configuration',
+            })
+        }
+
+        const deviceMessages = await DeviceMessage.find({
+            configurationId: relation.activeConfigurationId,
         }).sort({ createdDate: 1 })
 
         return res.status(200).json(deviceMessages)
@@ -77,23 +99,65 @@ export const getDeviceMessages = async (req, res) => {
 }
 
 export const updateDeviceMessage = async (req, res) => {
-    const { content } = req.body
+    const { messageOrigin, content, configurationId } = req.body
+    const updates = {}
 
-    if (!content) {
+    if (messageOrigin !== undefined) {
+        updates.messageOrigin = messageOrigin
+    }
+
+    if (content !== undefined) {
+        updates.content = content
+    }
+
+    if (configurationId !== undefined) {
+        updates.configurationId = configurationId
+    }
+
+    if (Object.keys(updates).length === 0) {
         return res.status(400).json({
-            message: 'content is required',
+            message: 'At least one field must be provided for update',
         })
     }
 
     try {
+        const existingMessage = await DeviceMessage.findOne({ id: req.params.id })
+
+        if (!existingMessage) {
+            return res.status(404).json({
+                message: 'Device message not found',
+            })
+        }
+
+        const currentConfiguration = await AssistantConfiguration.findOne({
+            id: existingMessage.configurationId,
+            ownerId: req.user.id,
+        })
+
+        if (!currentConfiguration) {
+            return res.status(404).json({
+                message: 'Device message not found',
+            })
+        }
+
+        if (configurationId !== undefined) {
+            const targetConfiguration = await AssistantConfiguration.findOne({
+                id: configurationId,
+                ownerId: req.user.id,
+            })
+
+            if (!targetConfiguration) {
+                return res.status(404).json({
+                    message: 'Assistant configuration not found',
+                })
+            }
+        }
+
         const deviceMessage = await DeviceMessage.findOneAndUpdate(
             {
                 id: req.params.id,
-                userId: req.user.id,
             },
-            {
-                content,
-            },
+            updates,
             {
                 returnDocument: 'after',
                 runValidators: true,
@@ -116,16 +180,26 @@ export const updateDeviceMessage = async (req, res) => {
 
 export const deleteDeviceMessage = async (req, res) => {
     try {
-        const deviceMessage = await DeviceMessage.findOneAndDelete({
-            id: req.params.id,
-            userId: req.user.id,
-        })
+        const existingMessage = await DeviceMessage.findOne({ id: req.params.id })
 
-        if (!deviceMessage) {
+        if (!existingMessage) {
             return res.status(404).json({
                 message: 'Device message not found',
             })
         }
+
+        const configuration = await AssistantConfiguration.findOne({
+            id: existingMessage.configurationId,
+            ownerId: req.user.id,
+        })
+
+        if (!configuration) {
+            return res.status(404).json({
+                message: 'Device message not found',
+            })
+        }
+
+        await DeviceMessage.deleteOne({ id: req.params.id })
 
         return res.status(204).send()
     } catch (error) {

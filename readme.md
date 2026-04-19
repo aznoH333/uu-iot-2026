@@ -13,7 +13,7 @@
 - [ ] update entitty structure
   - [X] device
   - [ ] device message
-  - [ ] assistant configuration
+  - [X] assistant configuration
 
 ### How to run
 - Run docker `$ sudo docker compose up -d`

@@ -12,11 +12,7 @@ const deviceMessageSchema = new mongoose.Schema(
             enum: ['user', 'assistant', 'system'],
             required: true,
         },
-        userId: {
-            type: String,
-            required: true,
-        },
-        deviceId: {
+        configurationId: {
             type: String,
             required: true,
         },
