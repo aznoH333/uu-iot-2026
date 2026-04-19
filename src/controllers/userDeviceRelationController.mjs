@@ -37,7 +37,7 @@ export const claimDevice = async (req, res) => {
             userRole: 'admin',
         })
 
-        device.activeUser = relation.id
+        device.activeUserRelation = relation.id
         await device.save()
 
         return res.status(201).json(relation)
@@ -144,8 +144,8 @@ export const leaveDevice = async (req, res) => {
 
         await UserDeviceRelation.deleteOne({ id: relation.id })
 
-        if (device && device.activeUser === relation.id) {
-            device.activeUser = promotedRelation ? promotedRelation.id : null
+        if (device && device.activeUserRelation === relation.id) {
+            device.activeUserRelation = promotedRelation ? promotedRelation.id : null
             await device.save()
         }
 

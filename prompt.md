@@ -28,22 +28,21 @@ Represents a user of the application/iot device
 #### Device
 Represents a specific physical device
 - id: String
-- activeUser: String // a reference to a user device relation entity
+- activeUserRelation: String // links to UserDeviceRelation
 #### UserDeviceRelation
 Stores a users relation to a device
 - id: String
 - userId: String
 - deviceId: String
-- activeConfigurationId: String
+- activeConfigurationId: String // Links to Assistant configuration
 - userRole: "user" | "admin"
 #### DeviceMessage
 Represents a message from the user, device or system.
 - id: String
 - messageOrigin: "user" | "assistant" | "system"
-- userId: String
-- deviceId: String
 - createdDate: Date
 - content: String
+- configurationId: String // id of the assistant configuration
 #### AssistantConfiguration
 - id: String
 - ownerId: String // user id

@@ -22,13 +22,13 @@ export const createDeviceMessage = async (req, res) => {
             })
         }
 
-        if (!device.activeUser) {
+        if (!device.activeUserRelation) {
             return res.status(400).json({
                 message: 'Device does not have an active user',
             })
         }
 
-        const activeRelation = await UserDeviceRelation.findOne({ id: device.activeUser })
+        const activeRelation = await UserDeviceRelation.findOne({ id: device.activeUserRelation })
 
         if (!activeRelation) {
             return res.status(404).json({

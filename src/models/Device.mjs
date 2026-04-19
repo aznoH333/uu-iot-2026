@@ -7,7 +7,7 @@ const deviceSchema = new mongoose.Schema(
             required: true,
             unique: true,
         },
-        activeUser: {
+        activeUserRelation: {
             type: String,
         },
     },

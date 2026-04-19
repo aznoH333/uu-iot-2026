@@ -9,7 +9,7 @@ export const createDevice = async (req, res) => {
     try {
         const device = await Device.create({
             id: randomUUID(),
-            activeUser: null,
+            activeUserRelation: null,
         })
 
         return res.status(201).json(device)
@@ -82,8 +82,8 @@ export const listDeviceUsers = async (req, res) => {
 export const updateDevice = async (req, res) => {
     const updates = {}
 
-    if (req.body.activeUser !== undefined) {
-        updates.activeUser = req.body.activeUser
+    if (req.body.activeUserRelation !== undefined) {
+        updates.activeUserRelation = req.body.activeUserRelation
     }
 
     if (Object.keys(updates).length === 0) {
