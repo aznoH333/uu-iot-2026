@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import AssistantConfiguration from '../models/AssistantConfiguration.mjs';
 import Device from '../models/Device.mjs';
 import User from '../models/User.mjs';
 import UserDeviceRelation from '../models/UserDeviceRelation.mjs';
@@ -153,6 +154,80 @@ export const leaveDevice = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to leave device',
+        })
+    }
+}
+
+export const setActiveConfiguration = async (req, res) => {
+    const { userDeviceRelationId, configurationId } = req.body
+
+    if (!userDeviceRelationId || !configurationId) {
+        return res.status(400).json({
+            message: 'userDeviceRelationId and configurationId are required',
+        })
+    }
+
+    try {
+        const relation = await UserDeviceRelation.findOne({
+            id: userDeviceRelationId,
+            userId: req.user.id,
+        })
+
+        if (!relation) {
+            return res.status(404).json({
+                message: 'User device relation not found',
+            })
+        }
+
+        const assistantConfiguration = await AssistantConfiguration.findOne({
+            id: configurationId,
+            ownerId: req.user.id,
+        })
+
+        if (!assistantConfiguration) {
+            return res.status(404).json({
+                message: 'Assistant configuration not found',
+            })
+        }
+
+        relation.activeConfigurationId = configurationId
+        await relation.save()
+
+        return res.status(200).json(relation)
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to set active configuration',
+        })
+    }
+}
+
+export const getDeviceRelations = async (req, res) => {
+    const { deviceId } = req.params
+
+    if (!deviceId) {
+        return res.status(400).json({
+            message: 'deviceId is required',
+        })
+    }
+
+    try {
+        const requesterRelation = await UserDeviceRelation.findOne({
+            userId: req.user.id,
+            deviceId,
+        })
+
+        if (!requesterRelation) {
+            return res.status(403).json({
+                message: 'You are not allowed to list relations for this device',
+            })
+        }
+
+        const relations = await UserDeviceRelation.find({ deviceId })
+
+        return res.status(200).json(relations)
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to get device relations',
         })
     }
 }

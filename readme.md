@@ -4,15 +4,15 @@
 - [ ] delete user device relations when device is deleted
 - [ ] document code
 - [ ] setup some api hook for openai
-- [ ] write assistant configuration entity
+- [X] write assistant configuration entity
 - [ ] device authentication
 - [ ] device communication
 - [ ] figure out voices
 
 
-- [ ] update entitty structure
+- [X] update entitty structure
   - [X] device
-  - [ ] device message
+  - [X] device message
   - [X] assistant configuration
 
 ### How to run
