@@ -7,6 +7,7 @@
 - [ ] write assistant configuration entity
 - [ ] device authentication
 - [ ] device communication
+- [ ] figure out voices
 
 
 - [ ] update entitty structure
