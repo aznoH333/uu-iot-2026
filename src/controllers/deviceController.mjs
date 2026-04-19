@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import Device from '../models/Device.mjs';
 import User from '../models/User.mjs';
 import UserDeviceRelation from '../models/UserDeviceRelation.mjs';
+import { hideMongoId, hideMongoIds } from '../utils/responseUtils.mjs';
 
 const USER_PUBLIC_FIELDS = '-_id -loginPassword'
 
@@ -12,7 +13,7 @@ export const createDevice = async (req, res) => {
             activeUserRelation: null,
         })
 
-        return res.status(201).json(device)
+        return res.status(201).json(hideMongoId(device))
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to create device',
@@ -24,7 +25,7 @@ export const getDevices = async (req, res) => {
     try {
         const devices = await Device.find()
 
-        return res.status(200).json(devices)
+        return res.status(200).json(hideMongoIds(devices))
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to get devices',
@@ -42,7 +43,7 @@ export const getDeviceById = async (req, res) => {
             })
         }
 
-        return res.status(200).json(device)
+        return res.status(200).json(hideMongoId(device))
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to get device',
@@ -108,7 +109,7 @@ export const updateDevice = async (req, res) => {
             })
         }
 
-        return res.status(200).json(device)
+        return res.status(200).json(hideMongoId(device))
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to update device',

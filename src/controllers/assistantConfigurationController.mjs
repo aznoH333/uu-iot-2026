@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import AssistantConfiguration from '../models/AssistantConfiguration.mjs';
+import { hideMongoId, hideMongoIds } from '../utils/responseUtils.mjs';
 
 export const createAssistantConfiguration = async (req, res) => {
     try {
@@ -12,7 +13,7 @@ export const createAssistantConfiguration = async (req, res) => {
             assistantVoice: 'placeholder',
         })
 
-        return res.status(201).json(assistantConfiguration)
+        return res.status(201).json(hideMongoId(assistantConfiguration))
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to create assistant configuration',
@@ -26,7 +27,7 @@ export const getAssistantConfigurations = async (req, res) => {
             ownerId: req.user.id,
         })
 
-        return res.status(200).json(assistantConfigurations)
+        return res.status(200).json(hideMongoIds(assistantConfigurations))
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to get assistant configurations',
@@ -47,7 +48,7 @@ export const getAssistantConfigurationById = async (req, res) => {
             })
         }
 
-        return res.status(200).json(assistantConfiguration)
+        return res.status(200).json(hideMongoId(assistantConfiguration))
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to get assistant configuration',
@@ -100,7 +101,7 @@ export const updateAssistantConfiguration = async (req, res) => {
             })
         }
 
-        return res.status(200).json(assistantConfiguration)
+        return res.status(200).json(hideMongoId(assistantConfiguration))
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to update assistant configuration',

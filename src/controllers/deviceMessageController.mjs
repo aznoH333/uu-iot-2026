@@ -3,6 +3,7 @@ import AssistantConfiguration from '../models/AssistantConfiguration.mjs';
 import Device from '../models/Device.mjs';
 import DeviceMessage from '../models/DeviceMessage.mjs';
 import UserDeviceRelation from '../models/UserDeviceRelation.mjs';
+import { hideMongoId, hideMongoIds } from '../utils/responseUtils.mjs';
 
 export const createDeviceMessage = async (req, res) => {
     const { deviceId } = req.params
@@ -51,7 +52,7 @@ export const createDeviceMessage = async (req, res) => {
             configurationId: activeRelation.activeConfigurationId,
         })
 
-        return res.status(201).json(deviceMessage)
+        return res.status(201).json(hideMongoId(deviceMessage))
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to create device message',
@@ -90,7 +91,7 @@ export const getDeviceMessages = async (req, res) => {
             configurationId: relation.activeConfigurationId,
         }).sort({ createdDate: 1 })
 
-        return res.status(200).json(deviceMessages)
+        return res.status(200).json(hideMongoIds(deviceMessages))
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to get device messages',
@@ -170,7 +171,7 @@ export const updateDeviceMessage = async (req, res) => {
             })
         }
 
-        return res.status(200).json(deviceMessage)
+        return res.status(200).json(hideMongoId(deviceMessage))
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to update device message',

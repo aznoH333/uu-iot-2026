@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { promisify } from 'util';
 import { JWT_SECRET } from '../config/jwt.mjs';
 import User from '../models/User.mjs';
+import { hideMongoId, hideMongoIds } from '../utils/responseUtils.mjs';
 
 const USER_PUBLIC_FIELDS = '-_id -loginPassword'
 const SCRYPT_KEY_LENGTH = 64
@@ -62,7 +63,7 @@ export const createUser = async (req, res) => {
             loginPassword: hashedPassword,
         })
 
-        return res.status(201).json(user)
+        return res.status(201).json(hideMongoId(user))
     } catch (error) {
         if (error.code === 11000) {
             return res.status(409).json({
@@ -80,7 +81,7 @@ export const getUsers = async (req, res) => {
     try {
         const users = await User.find({}, USER_PUBLIC_FIELDS)
 
-        return res.status(200).json(users)
+        return res.status(200).json(hideMongoIds(users))
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to get users',
@@ -98,7 +99,7 @@ export const getUserById = async (req, res) => {
             })
         }
 
-        return res.status(200).json(user)
+        return res.status(200).json(hideMongoId(user))
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to get user',
@@ -207,7 +208,7 @@ export const updateUser = async (req, res) => {
             })
         }
 
-        return res.status(200).json(user)
+        return res.status(200).json(hideMongoId(user))
     } catch (error) {
         if (error.code === 11000) {
             return res.status(409).json({
