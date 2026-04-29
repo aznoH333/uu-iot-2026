@@ -3,11 +3,11 @@
 - [ ] delete device messages when user leaves device
 - [ ] delete user device relations when device is deleted
 - [ ] document code
-- [ ] setup some api hook for openai
+- [X] setup some api hook for openai
 - [X] write assistant configuration entity
 - [ ] device authentication
 - [ ] device communication
-- [ ] figure out voices
+- [X] figure out voices
 
 
 - [X] update entitty structure
@@ -19,4 +19,3 @@
 - Run docker `$ sudo docker compose up -d`
 - Run server `$ npm run start`
 
-# efn
