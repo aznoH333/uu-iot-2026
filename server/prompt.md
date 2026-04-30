@@ -14,7 +14,7 @@ The project needs to have the following database objects
 - User
 - Device
 - UserDeviceRelation
-- DeviceMessage
+- Message
 - AssistantConfiguration
 
 ### Object detail and fields
@@ -28,6 +28,7 @@ Represents a user of the application/iot device
 #### Device
 Represents a specific physical device
 - id: String
+- name: String
 - activeUserRelation: String // links to UserDeviceRelation
 #### UserDeviceRelation
 Stores a users relation to a device
@@ -36,8 +37,8 @@ Stores a users relation to a device
 - deviceId: String
 - activeConfigurationId: String // Links to Assistant configuration
 - userRole: "user" | "admin"
-#### DeviceMessage
-Represents a message from the user, device or system.
+#### Message
+Represents a message from the user, assistant or system.
 - id: String
 - messageOrigin: "user" | "assistant" | "system"
 - createdDate: Date

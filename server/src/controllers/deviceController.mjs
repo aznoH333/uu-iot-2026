@@ -10,6 +10,7 @@ export const createDevice = async (req, res) => {
     try {
         const device = await Device.create({
             id: randomUUID(),
+            name: null,
             activeUserRelation: null,
         })
 
@@ -87,6 +88,10 @@ export const updateDevice = async (req, res) => {
         updates.activeUserRelation = req.body.activeUserRelation
     }
 
+    if (req.body.name !== undefined) {
+        updates.name = req.body.name
+    }
+
     if (Object.keys(updates).length === 0) {
         return res.status(400).json({
             message: 'At least one field must be provided for update',
@@ -126,6 +131,8 @@ export const deleteDevice = async (req, res) => {
                 message: 'Device not found',
             })
         }
+
+        await UserDeviceRelation.deleteMany({ deviceId: req.params.id })
 
         return res.status(204).send()
     } catch (error) {

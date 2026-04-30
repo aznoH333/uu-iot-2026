@@ -1,14 +1,18 @@
 import express from 'express'
 import mongoose from 'mongoose';
+import cors from 'cors'
 import assistantConfigurationRouter from './routes/assistantConfigurationRoutes.mjs';
-import deviceMessageRouter from './routes/deviceMessageRoutes.mjs';
+import messageRouter from './routes/messageRoutes.mjs';
 import deviceRouter from './routes/deviceRoutes.mjs';
 import userRouter from './routes/userRoutes.mjs';
 import userDeviceRelationRouter from './routes/userDeviceRelationRoutes.mjs';
 
 
 const app = express()
-
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true,
+}))
 app.use(express.json())
 
 mongoose.connect('mongodb://127.0.0.1:27017/test')
@@ -20,7 +24,7 @@ app.get('/', (req, res) => {
 
 app.use('/users', userRouter)
 app.use('/devices', deviceRouter)
-app.use('/device-messages', deviceMessageRouter)
+app.use('/messages', messageRouter)
 app.use('/user-device-relations', userDeviceRelationRouter)
 app.use('/assistant-configurations', assistantConfigurationRouter)
 

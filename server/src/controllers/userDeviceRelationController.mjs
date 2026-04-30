@@ -6,11 +6,11 @@ import UserDeviceRelation from '../models/UserDeviceRelation.mjs';
 import { hideMongoId, hideMongoIds } from '../utils/responseUtils.mjs';
 
 export const claimDevice = async (req, res) => {
-    const { deviceId } = req.body
+    const { deviceId, name } = req.body
 
-    if (!deviceId) {
+    if (!deviceId || !name) {
         return res.status(400).json({
-            message: 'deviceId is required',
+            message: 'deviceId and name are required',
         })
     }
 
@@ -40,6 +40,7 @@ export const claimDevice = async (req, res) => {
         })
 
         device.activeUserRelation = relation.id
+        device.name = name
         await device.save()
 
         return res.status(201).json(hideMongoId(relation))
@@ -198,6 +199,61 @@ export const setActiveConfiguration = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to set active configuration',
+        })
+    }
+}
+
+export const setActiveUser = async (req, res) => {
+    const { userId, deviceId } = req.body
+
+    if (!userId || !deviceId) {
+        return res.status(400).json({
+            message: 'userId and deviceId are required',
+        })
+    }
+
+    try {
+        const requesterRelation = await UserDeviceRelation.findOne({
+            userId: req.user.id,
+            deviceId,
+        })
+
+        if (!requesterRelation) {
+            return res.status(403).json({
+                message: 'You are not allowed to set active user for this device',
+            })
+        }
+
+        const targetRelation = await UserDeviceRelation.findOne({
+            userId,
+            deviceId,
+        })
+
+        if (!targetRelation) {
+            return res.status(404).json({
+                message: 'User is not assigned to this device',
+            })
+        }
+
+        const device = await Device.findOneAndUpdate(
+            { id: deviceId },
+            { activeUserRelation: targetRelation.id },
+            {
+                returnDocument: 'after',
+                runValidators: true,
+            },
+        )
+
+        if (!device) {
+            return res.status(404).json({
+                message: 'Device not found',
+            })
+        }
+
+        return res.status(200).json(hideMongoId(device))
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to set active user',
         })
     }
 }
