@@ -10,6 +10,7 @@ export const createDevice = async (req, res) => {
     try {
         const device = await Device.create({
             id: randomUUID(),
+            apiKey: randomUUID(),
             name: null,
             activeUserRelation: null,
         })

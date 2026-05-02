@@ -28,6 +28,7 @@ Represents a user of the application/iot device
 #### Device
 Represents a specific physical device
 - id: String
+- apiKey: String
 - name: String
 - activeUserRelation: String // links to UserDeviceRelation
 #### UserDeviceRelation

@@ -10,6 +10,11 @@ const deviceSchema = new mongoose.Schema(
         name: {
             type: String,
         },
+        apiKey: {
+            type: String,
+            required: true,
+            unique: true,
+        },
         activeUserRelation: {
             type: String,
         },
