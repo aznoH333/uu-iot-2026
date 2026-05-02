@@ -1,22 +1,53 @@
 import { randomUUID } from 'crypto';
 import AssistantConfiguration from '../models/AssistantConfiguration.mjs';
+import Device from '../models/Device.mjs';
 import Message from '../models/Message.mjs';
+import UserDeviceRelation from '../models/UserDeviceRelation.mjs';
 import { hideMongoId, hideMongoIds } from '../utils/responseUtils.mjs';
 
 export const createMessage = async (req, res) => {
-    const { configurationId } = req.params
-    const { messageOrigin = 'user', content } = req.body
+    const { apiKey, content } = req.body
 
-    if (!configurationId || !content) {
+    if (!apiKey || !content) {
         return res.status(400).json({
-            message: 'configurationId and content are required',
+            message: 'apiKey and content are required',
         })
     }
 
     try {
+        const device = await Device.findOne({ apiKey })
+
+        if (!device) {
+            return res.status(404).json({
+                message: 'Device not found',
+            })
+        }
+
+        if (!device.activeUserRelation) {
+            return res.status(400).json({
+                message: 'Device does not have an active user relation',
+            })
+        }
+
+        const activeRelation = await UserDeviceRelation.findOne({
+            id: device.activeUserRelation,
+            deviceId: device.id,
+        })
+
+        if (!activeRelation) {
+            return res.status(404).json({
+                message: 'Active user relation not found',
+            })
+        }
+
+        if (!activeRelation.activeConfigurationId) {
+            return res.status(400).json({
+                message: 'Active user relation does not have an active configuration',
+            })
+        }
+
         const configuration = await AssistantConfiguration.findOne({
-            id: configurationId,
-            ownerId: req.user.id,
+            id: activeRelation.activeConfigurationId,
         })
 
         if (!configuration) {
@@ -27,10 +58,10 @@ export const createMessage = async (req, res) => {
 
         const createdMessage = await Message.create({
             id: randomUUID(),
-            messageOrigin,
+            messageOrigin: 'user',
             createdDate: new Date(),
             content,
-            configurationId,
+            configurationId: activeRelation.activeConfigurationId,
         })
 
         return res.status(201).json(hideMongoId(createdMessage))

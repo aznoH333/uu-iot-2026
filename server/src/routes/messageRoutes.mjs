@@ -9,7 +9,7 @@ import { requireAuth } from '../middleware/authMiddleware.mjs';
 
 const router = express.Router()
 
-router.post('/:configurationId', requireAuth, createMessage)
+router.post('/', createMessage)
 router.get('/:configurationId', requireAuth, getMessages)
 router.put('/:id', requireAuth, updateMessage)
 router.delete('/:id', requireAuth, deleteMessage)
