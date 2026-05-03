@@ -50,7 +50,6 @@ function getConfig () {
   return {
     endpoint: normalizeEndpoint(process.env.SERVER_ENDPOINT),
     apiKey: process.env.API_KEY || '',
-    apiKeyHeader: process.env.API_KEY_HEADER || 'x-api-key',
     sampleRate: numberFromEnv('SAMPLE_RATE', 24000),
     channels: numberFromEnv('CHANNELS', 1),
     volumeThreshold: numberFromEnv('VOLUME_THRESHOLD', 0.02),
@@ -439,19 +438,13 @@ class Gateway {
       accept: 'application/json, text/plain'
     }
 
-    if (this.config.apiKey) {
-      headers[this.config.apiKeyHeader] = this.config.apiKey
-    }
-
     try {
       const response = await this.fetch(this.config.endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          audio: audio.toString('base64'),
-          encoding: 'pcm16',
-          sampleRate: this.config.sampleRate,
-          channels: this.config.channels
+          content: audio.toString('base64'),
+          apiKey: this.config.apiKey
         }),
         signal: controller.signal
       })
