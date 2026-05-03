@@ -4,6 +4,7 @@ import WebSocket from "ws";
  * a wrapper method for calling openai api
  * @param base64Audio - base64 encoded audio file with the users message
  * @param messageBacklog - an object holding the previous conversation
+ * @param assistantConfig - a string of instructions for the assistant
  * @param voice - which openai voice should be used
  * @param onAudioReceive - a function that handles what should happen with the received audio
  * @param onTranscriptReceive - a function that handles what should happen with the received transcript
@@ -27,6 +28,7 @@ import WebSocket from "ws";
 function sendMessageToOpenAi(
     base64Audio,
     messageBacklog,
+    assistantConfig,
     voice = "alloy",
     onAudioReceive,
     onTranscriptReceive,
@@ -98,7 +100,7 @@ function sendMessageToOpenAi(
             type: "response.create",
             response: {
                 modalities: ["text", "audio"],
-                instructions: "Answer the user with a short spoken response.",
+                instructions: `Instructions: [${assistantConfig}]. Answer the user with a short spoken response.`,
             },
         }));
     });
