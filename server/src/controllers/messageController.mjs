@@ -58,6 +58,16 @@ export const createMessage = async (req, res) => {
         }
 
         const configurationId = activeRelation.activeConfigurationId
+        const backlogMessages = await Message.find({
+            configurationId,
+            messageOrigin: { $ne: 'system' },
+        }).sort({ createdDate: -1 }).limit(50)
+        const messageBacklog = {
+            messages: backlogMessages.reverse().map((message) => ({
+                role: message.messageOrigin,
+                text: message.content,
+            })),
+        }
         const assistantConfig = [
             configuration.assistantName ? `Assistant name: ${configuration.assistantName}` : null,
             configuration.systemPrompt ? `System prompt: ${configuration.systemPrompt}` : null,
@@ -91,7 +101,7 @@ export const createMessage = async (req, res) => {
         await new Promise((resolve) => {
             sendMessageToOpenAi(
                 content,
-                { messages: [] },
+                messageBacklog,
                 assistantConfig,
                 configuration.assistantVoice ?? 'alloy',
                 (audio) => {
