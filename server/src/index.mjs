@@ -6,14 +6,14 @@ import messageRouter from './routes/messageRoutes.mjs';
 import deviceRouter from './routes/deviceRoutes.mjs';
 import userRouter from './routes/userRoutes.mjs';
 import userDeviceRelationRouter from './routes/userDeviceRelationRoutes.mjs';
-
+import 'dotenv/config'
 
 const app = express()
 app.use(cors({
     origin: 'http://localhost:5173',
     credentials: true,
 }))
-app.use(express.json())
+app.use(express.json({ limit: '10mb' }))
 
 mongoose.connect('mongodb://127.0.0.1:27017/test')
     .then(() => console.log('Connected!'));

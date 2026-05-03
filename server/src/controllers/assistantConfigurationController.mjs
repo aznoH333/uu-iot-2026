@@ -10,7 +10,7 @@ export const createAssistantConfiguration = async (req, res) => {
             assistantName: 'Robot',
             systemPrompt: '',
             topicRestrictions: '',
-            assistantVoice: 'placeholder',
+            assistantVoice: 'alloy',
         })
 
         return res.status(201).json(hideMongoId(assistantConfiguration))

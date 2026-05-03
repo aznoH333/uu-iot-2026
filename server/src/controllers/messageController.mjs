@@ -3,6 +3,7 @@ import AssistantConfiguration from '../models/AssistantConfiguration.mjs';
 import Device from '../models/Device.mjs';
 import Message from '../models/Message.mjs';
 import UserDeviceRelation from '../models/UserDeviceRelation.mjs';
+import { sendMessageToOpenAi } from '../utils/openaiWrapper.mjs';
 import { hideMongoId, hideMongoIds } from '../utils/responseUtils.mjs';
 
 export const createMessage = async (req, res) => {
@@ -56,15 +57,64 @@ export const createMessage = async (req, res) => {
             })
         }
 
-        const createdMessage = await Message.create({
+        let responseSent = false
+        const configurationId = activeRelation.activeConfigurationId
+        const assistantConfig = [
+            configuration.assistantName ? `Assistant name: ${configuration.assistantName}` : null,
+            configuration.systemPrompt ? `System prompt: ${configuration.systemPrompt}` : null,
+            configuration.topicRestrictions ? `Topic restrictions: ${configuration.topicRestrictions}` : null,
+        ].filter(Boolean).join('\n')
+
+        const createStoredMessage = async (messageOrigin, messageContent) => Message.create({
             id: randomUUID(),
-            messageOrigin: 'user',
+            messageOrigin,
             createdDate: new Date(),
-            content,
-            configurationId: activeRelation.activeConfigurationId,
+            content: messageContent,
+            configurationId,
         })
 
-        return res.status(201).json(hideMongoId(createdMessage))
+        await new Promise((resolve) => {
+            sendMessageToOpenAi(
+                content,
+                { messages: [] },
+                assistantConfig,
+                configuration.assistantVoice ?? 'alloy',
+                (audio) => {
+                    responseSent = true
+                    res.status(200).json({
+                        content: audio,
+                    })
+                    resolve()
+                },
+                async (userTranscript, assistantTranscript) => {
+                    try {
+                        await createStoredMessage('user', userTranscript)
+                        await createStoredMessage('assistant', assistantTranscript)
+                    } catch (error) {
+                        console.error(error)
+                    }
+                },
+                async (error) => {
+                    const errorContent = typeof error === 'string'
+                        ? error
+                        : error?.message ?? JSON.stringify(error) ?? 'Unknown OpenAI error'
+
+                    try {
+                        await createStoredMessage('system', errorContent)
+                    } catch (messageError) {
+                        console.error(messageError)
+                    }
+
+                    if (!responseSent) {
+                        responseSent = true
+                        res.status(500).json({
+                            message: errorContent,
+                        })
+                        resolve()
+                    }
+                },
+            )
+        })
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to create message',

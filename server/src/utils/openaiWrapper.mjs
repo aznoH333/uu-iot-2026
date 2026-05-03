@@ -1,5 +1,13 @@
 import WebSocket from "ws";
 
+const REQUEST_TIMEOUT_MS = 45_000;
+
+
+/**
+ * List of supported voices
+ * 'alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse', 'marin', 'cedar'.
+ */
+
 /**
  * a wrapper method for calling openai api
  * @param base64Audio - base64 encoded audio file with the users message
@@ -25,7 +33,7 @@ import WebSocket from "ws";
  *     ]
  * }
  */
-function sendMessageToOpenAi(
+export function sendMessageToOpenAi(
     base64Audio,
     messageBacklog,
     assistantConfig,
@@ -37,6 +45,8 @@ function sendMessageToOpenAi(
     let receivedAudio = false;
     let userTranscript = undefined;
     let assistantTranscript = undefined;
+    let closeExpected = false;
+    let errorHandled = false;
 
     const ws = new WebSocket(
         "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview",
@@ -48,9 +58,28 @@ function sendMessageToOpenAi(
         }
     );
 
+    const handleError = (error) => {
+        if (errorHandled) {
+            return;
+        }
+
+        errorHandled = true;
+        closeExpected = true;
+        onError(error);
+
+        if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+            ws.close();
+        }
+    }
+
+    const timeout = setTimeout(() => {
+        handleError(new Error("OpenAI realtime request timed out"));
+    }, REQUEST_TIMEOUT_MS);
+
     const checkIfWsCanBeClosed = () => {
         if (receivedAudio && userTranscript !== undefined && assistantTranscript !== undefined) {
             onTranscriptReceive(userTranscript, assistantTranscript);
+            closeExpected = true;
             ws.close();
         }
     }
@@ -81,6 +110,7 @@ function sendMessageToOpenAi(
                 voice: voice,
                 input_audio_format: "pcm16",
                 output_audio_format: "pcm16",
+                turn_detection: null,
                 input_audio_transcription: {
                     model: "gpt-4o-mini-transcribe",
                 },
@@ -109,15 +139,22 @@ function sendMessageToOpenAi(
 
     // handle response
     ws.on("message", (data) => {
-        const event = JSON.parse(data.toString());
+        let event;
 
-        if (event.type === "response.audio.delta") {
+        try {
+            event = JSON.parse(data.toString());
+        } catch (error) {
+            handleError(error);
+            return;
+        }
+
+        if (event.type === "response.audio.delta" || event.type === "response.output_audio.delta") {
             audioChunks.push(Buffer.from(event.delta, "base64"));
         }
 
-        if (event.type === "response.audio.done") {
+        if (event.type === "response.audio.done" || event.type === "response.output_audio.done") {
             const audio = Buffer.concat(audioChunks);
-            onAudioReceive(audio);
+            onAudioReceive(audio.toString("base64"));
 
             receivedAudio = true;
 
@@ -126,8 +163,7 @@ function sendMessageToOpenAi(
 
         if (event.type === "error") {
             console.error(event.error);
-            onError(event.error);
-            ws.close();
+            handleError(event.error);
         }
 
         // get user transcript
@@ -149,5 +185,17 @@ function sendMessageToOpenAi(
             checkIfWsCanBeClosed();
         }
 
+    });
+
+    ws.on("error", (error) => {
+        handleError(error);
+    });
+
+    ws.on("close", () => {
+        clearTimeout(timeout);
+
+        if (!closeExpected && !receivedAudio) {
+            handleError(new Error("OpenAI realtime connection closed before audio was received"));
+        }
     });
 }
