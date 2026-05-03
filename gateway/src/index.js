@@ -26,14 +26,15 @@ function numberFromEnv (name, fallback) {
   return parsed
 }
 
-function booleanFromEnv (name, fallback) {
+function debugModeFromEnv (name, fallback) {
   const value = process.env[name]
   if (value === undefined || value === '') return fallback
 
-  if (/^(1|true|yes|on)$/i.test(value)) return true
-  if (/^(0|false|no|off)$/i.test(value)) return false
+  if (/^(0|false|no|off)$/i.test(value)) return 'false'
+  if (/^(local)$/i.test(value)) return 'local'
+  if (/^(api|1|true|yes|on)$/i.test(value)) return 'api'
 
-  throw new Error(`${name} must be true or false`)
+  throw new Error(`${name} must be false, local, or api`)
 }
 
 function normalizeEndpoint (endpoint) {
@@ -60,8 +61,12 @@ function getConfig () {
     player: process.env.PLAYER || 'ffplay',
     audioDir: process.env.AUDIO_DIR || 'recordings',
     requestTimeoutMillis: numberFromEnv('REQUEST_TIMEOUT_MS', 30000),
-    debugMode: booleanFromEnv('DEBUG', false)
+    debugMode: debugModeFromEnv('DEBUG', 'false')
   }
+}
+
+function isDebugMode (config) {
+  return config.debugMode !== 'false'
 }
 
 function calculatePcm16Level (chunk) {
@@ -322,8 +327,10 @@ class Gateway {
     })
 
     console.log(`Monitoring microphone at ${this.config.sampleRate}Hz PCM16 mono. Threshold: ${this.config.volumeThreshold}`)
-    if (this.config.debugMode) {
-      console.log('Debug mode enabled. The gateway will process one utterance, save voice_input.pcm16 and voice_output.pcm16, then stop.')
+    if (this.config.debugMode === 'local') {
+      console.log('Debug mode: local. The gateway will process one utterance, save voice_input.pcm16, then stop.')
+    } else if (this.config.debugMode === 'api') {
+      console.log('Debug mode: api. The gateway will process one utterance, save voice_input.pcm16 and voice_output.pcm16, then stop.')
     }
   }
 
@@ -351,7 +358,7 @@ class Gateway {
 
     this.listeningChunks.push(chunk)
 
-    if (this.config.debugMode) {
+    if (isDebugMode(this.config)) {
       console.log(`Noise level: ${level.toFixed(4)}`)
     }
 
@@ -399,15 +406,23 @@ class Gateway {
     this.transitionTo(STATES.THINKING)
 
     const runId = String(++this.runCounter).padStart(4, '0')
-    const requestPath = path.join(this.config.audioDir, this.config.debugMode ? 'voice_input.pcm16' : `${runId}-request.pcm16`)
-    const responsePath = path.join(this.config.audioDir, this.config.debugMode ? 'voice_output.pcm16' : `${runId}-response.pcm16`)
+    const requestPath = path.join(this.config.audioDir, isDebugMode(this.config) ? 'voice_input.pcm16' : `${runId}-request.pcm16`)
+    const responsePath = path.join(this.config.audioDir, isDebugMode(this.config) ? 'voice_output.pcm16' : `${runId}-response.pcm16`)
 
     try {
       await fs.writeFile(requestPath, audio)
+
+      if (this.config.debugMode === 'local') {
+        console.log(`Saved debug input: ${requestPath}`)
+        this.stop()
+        process.exitCode = 0
+        return
+      }
+
       const responseAudio = await this.sendAudio(audio)
       await fs.writeFile(responsePath, responseAudio)
 
-      if (this.config.debugMode) {
+      if (this.config.debugMode === 'api') {
         console.log(`Saved debug input: ${requestPath}`)
         console.log(`Saved debug output: ${responsePath}`)
         this.stop()
@@ -420,7 +435,7 @@ class Gateway {
     } catch (error) {
       console.error(error.message)
     } finally {
-      if (this.config.debugMode) {
+      if (isDebugMode(this.config)) {
         this.stop()
         return
       }
@@ -490,7 +505,7 @@ async function runSelfTest () {
   assert(decoded.equals(sample))
   assert(getFfmpegRecorderArgs({ sampleRate: 24000, channels: 1, inputDevice: ':0' }).includes('s16le'))
   assert(getPlayerArgs({ sampleRate: 24000, channels: 1, player: 'ffplay' }).includes('s16le'))
-  assert(booleanFromEnv('MISSING_DEBUG_VALUE', true) === true)
+  assert(debugModeFromEnv('MISSING_DEBUG_VALUE', 'false') === 'false')
 
   console.log('Self-test passed')
 }
