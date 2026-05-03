@@ -153,6 +153,8 @@ export function sendMessageToOpenAi(
         }
 
         if (event.type === "response.audio.done" || event.type === "response.output_audio.done") {
+            console.log("Received audio");
+
             const audio = Buffer.concat(audioChunks);
             onAudioReceive(audio.toString("base64"));
 
@@ -176,6 +178,16 @@ export function sendMessageToOpenAi(
         }
 
 
+
+        // ai transcript is a bit fucked so it has to be done like this using the delta
+        if (event.type === "response.audio_transcript.delta") {
+
+            if (assistantTranscript === undefined) {
+                assistantTranscript = event.delta;
+            }else {
+                assistantTranscript += event.delta;
+            }
+        }
         // get assistant transcript
         if (event.type === "response.output_audio_transcript.done") {
             console.log("Assistant transcript:", event.transcript);

@@ -57,7 +57,6 @@ export const createMessage = async (req, res) => {
             })
         }
 
-        let responseSent = false
         const configurationId = activeRelation.activeConfigurationId
         const assistantConfig = [
             configuration.assistantName ? `Assistant name: ${configuration.assistantName}` : null,
@@ -73,6 +72,22 @@ export const createMessage = async (req, res) => {
             configurationId,
         })
 
+        let responseSent = false;
+        let audioReceived = false;
+        let transcriptReceived = false;
+        let audioContent = undefined;
+
+        const checkIfCanresolve = (resolve, res) => {
+            if (audioReceived && transcriptReceived) {
+                responseSent = true
+
+                res.status(200).json({
+                    content: audioContent,
+                });
+                resolve();
+            }
+        }
+
         await new Promise((resolve) => {
             sendMessageToOpenAi(
                 content,
@@ -80,16 +95,19 @@ export const createMessage = async (req, res) => {
                 assistantConfig,
                 configuration.assistantVoice ?? 'alloy',
                 (audio) => {
-                    responseSent = true
-                    res.status(200).json({
-                        content: audio,
-                    })
-                    resolve()
+                    audioReceived = true;
+                    audioContent = audio;
+
+                    checkIfCanresolve(resolve, res)
+
                 },
                 async (userTranscript, assistantTranscript) => {
                     try {
                         await createStoredMessage('user', userTranscript)
                         await createStoredMessage('assistant', assistantTranscript)
+                        transcriptReceived = true;
+
+                        checkIfCanresolve(resolve, res)
                     } catch (error) {
                         console.error(error)
                     }
