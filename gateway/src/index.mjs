@@ -5,11 +5,11 @@ import fs from "node:fs";
 import Speaker from "speaker";
 import {Readable} from "stream";
 
-const SAMPLE_RATE = 16000;
+const SAMPLE_RATE = 24000;
 const CHANNELS = 1;
 const BIT_DEPTH = 16;
 const BYTES_PER_SAMPLE = BIT_DEPTH / 8;
-const PRE_RECORD_SECONDS = 1;
+const PRE_RECORD_SECONDS = process.env.PRE_RECORD_SECONDS === undefined ? process.env.PRE_RECORD_SECONDS : 1;
 
 
 
@@ -18,16 +18,16 @@ const MAX_PRE_RECORD_BYTES = SAMPLE_RATE * CHANNELS * BYTES_PER_SAMPLE * PRE_REC
 
 
 const STATES = {
-IDLE: "idle",
-	  LISTENING: "listening",
-	  THINKING: "thinking",
-	  TALKING: "talking"
+	IDLE: "IDLE",
+	LISTENING: "LISTENING",
+	THINKING: "THINKING",
+	TALKING: "TALKING"
 }
 
 const NOISE_LEVEL = {
-LOW: "low",
-	 MEDIUM: "medium",
-	 HIGH: "high"
+	LOW: "low",
+	MEDIUM: "medium",
+	HIGH: "high"
 }
 
 
@@ -69,7 +69,7 @@ function main(){
 		globalState.currentNoiseLevel = level;
 
 		if (globalState.isRecording) {
-			globalState.currentFileWriter.write(data);
+			globalState.currentRecording.push(data);
 		}
 		addToPreRecordBuffer(data);
 	});
@@ -86,9 +86,18 @@ function main(){
 
 
 
+function switchState(nextState) {
+	if (globalState.currentState === nextState) {
+		return;
+	}
+
+	console.log("Current device status :", nextState);
+	globalState.currentState = nextState;
+	globalState.noiseAccumulator = 0;
+}
+
 
 function primaryLoop() {
-
 	//console.log("current noise level :", globalState.currentNoiseLevel, "accumulator:", globalState.noiseAccumulator);
 	// handle current state
 	switch (globalState.currentState) {
@@ -102,12 +111,13 @@ function primaryLoop() {
 		case STATES.THINKING:
 			handleThinkingState();
 			break;
-		case STATES.SPEAKING:
+		case STATES.TALKING:
 			handleSpeakingState();
 			break;
 	}
 
 }
+
 
 function handleIdleState() {
 	if (globalState.currentNoiseLevel === NOISE_LEVEL.MEDIUM) {
@@ -123,8 +133,7 @@ function handleIdleState() {
 	if (globalState.noiseAccumulator > 5) {
 		// start listening
 		startRecording();
-		globalState.noiseAccumulator = 0;
-		globalState.currentState = STATES.LISTENING;
+		switchState(STATES.LISTENING);
 	}
 }
 
@@ -138,32 +147,27 @@ function handleListeningState() {
 
 
 	if (globalState.noiseAccumulator > 10) {
-		globalState.currentState = STATES.THINKING;
-		globalState.noiseAccumulator = 0;
+		switchState(STATES.THINKING);
 		stopRecording();
 	}
 }
 
 function handleThinkingState() {
-	// placeholder logic
-	globalState.currentAudio = fs.readFile("./poo.txt", (err, data)=>{
-		if (err) {
-			console.log("Failed to read text file :", err);
-		} else {
-			globalState.currentState = STATES.SPEAKING;
-
-			console.log("Finished thinking playing audio");
-			globalState.currentAudio = data.toString();
-
-			// ffmpeg -f s16le -ar 24000 -ac 1 -i response.pcm16 response.wav
-			playBase64Pcm16(data.toString(), {
-				sampleRate: 24000,
-				channels: 1,
-			});
+	globalState.currentState = STATES.SPEAKING;
+	playBase64Pcm16(
+		globalState.currentRecordingAsString,
+		{
+			sampleRate: 24000,
+			channels: 1,
+			bitDepth: 16,
+		},
+		()=>{
+			switchState(STATES.IDLE);
 		}
+	);
 
-		
-	});
+	switchState(STATES.TALKING);
+
 }
 
 function handleSpeakingState() {
@@ -220,44 +224,29 @@ function addToPreRecordBuffer(chunk) {
 let recordingCounter = 0;
 
 function startRecording() {
-	const filename = `recording-${recordingCounter}.wav`;
-	recordingCounter++;
 
-
-	globalState.currentFileWriter = new wav.FileWriter(filename, {
-		sampleRate: SAMPLE_RATE,
-		channels: CHANNELS,
-		bitDepth: BIT_DEPTH,
-	});
+	globalState.currentRecording = [];
+	
 
 	// push prerecord buffer to current recording
 	for (const bufferedChunk of globalState.preRecordChunks) {
-		globalState.currentFileWriter.write(bufferedChunk);
+		globalState.currentRecording.push(bufferedChunk);
 	}
-
-
 
 	// start recording
 	globalState.isRecording = true;
-
-	console.log(`Started recording: ${filename}`);
 }
 
 function stopRecording() {
-	if (!globalState.currentFileWriter) return;
-
-	globalState.currentFileWriter.end();
-
-	globalState.currentFileWriter = null;
 	globalState.isRecording = false;
-
-	console.log("Stopped recording");
+	
+	globalState.currentRecordingAsString = Buffer.concat(globalState.currentRecording).toString("base64");
 }
 // endregion
 
 
 // region audio playing
-function playBase64Pcm16(base64Audio, options = {}) {
+function playBase64Pcm16(base64Audio, options = {}, onAudioComplete) {
 	const {
 		sampleRate = 24000,
 		channels = 1,
@@ -267,7 +256,6 @@ function playBase64Pcm16(base64Audio, options = {}) {
 	return new Promise((resolve, reject) => {
 		const audioBuffer = Buffer.from(base64Audio, "base64");
 
-		console.log(base64Audio.substring(0,20));
 		const speaker = new Speaker({
 			channels,
 			bitDepth,
@@ -280,13 +268,13 @@ function playBase64Pcm16(base64Audio, options = {}) {
 
 		const handleError = (error) => {
 			console.log("failed to play audio");
-			globalState.currentState = STATES.IDLE;
+			onAudioComplete();
 			reject();
 		}
 
 		speaker.on("close", ()=>{
 			resolve();
-			globalState.currentState = STATES.IDLE;
+			onAudioComplete();
 		});
 		speaker.on("error", handleError);
 		audioStream.on("error", handleError);
