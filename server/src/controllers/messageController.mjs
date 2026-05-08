@@ -120,6 +120,7 @@ export const createMessage = async (req, res) => {
                         checkIfCanresolve(resolve, res)
                     } catch (error) {
                         console.error(error)
+                        resolve();
                     }
                 },
                 async (error) => {

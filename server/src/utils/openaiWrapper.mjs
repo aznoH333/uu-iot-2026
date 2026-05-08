@@ -95,7 +95,7 @@ export function sendMessageToOpenAi(
                     role: message.role,
                     content: [
                         {
-                            type: message.role === "user" ? "input_text" : "output_text",
+                            type: message.role === "user" ? "input_text" : "text",
                             text: message.text,
                         },
                     ],
