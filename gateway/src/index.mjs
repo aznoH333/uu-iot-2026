@@ -16,19 +16,24 @@ const PRE_RECORD_SECONDS = process.env.PRE_RECORD_SECONDS === undefined ? proces
 // rolling buffer
 const MAX_PRE_RECORD_BYTES = SAMPLE_RATE * CHANNELS * BYTES_PER_SAMPLE * PRE_RECORD_SECONDS;
 
-
 const STATES = {
 	IDLE: "IDLE",
 	LISTENING: "LISTENING",
 	THINKING: "THINKING",
 	TALKING: "TALKING"
-}
+};
+
+const DEVICE_MODE = {
+	LIVE: "LIVE",
+	DEBUG_PLAYBACK: "DEBUG_PLAYBACK",	
+};
+
 
 const NOISE_LEVEL = {
 	LOW: "low",
 	MEDIUM: "medium",
 	HIGH: "high"
-}
+};
 
 
 const globalState = {
@@ -38,13 +43,37 @@ const globalState = {
 	preRecordChunks: [],
 	preRecordBytes: 0,
 	currentAudio: [],
-
 }
 
 
 
 function main(){
 	console.log("initializing gateway");
+	
+	// check device configuration for errors
+	globalState.deviceMode = DEVICE_MODE[process.env.DEVICE_MODE];
+	console.log(`device mode : [${globalState.deviceMode}]`);
+	if (globalState.deviceMode === undefined) {
+		console.error(`Failed to start device, unsuported DEVICE_MODE: ${process.env.DEVICE_MODE}, must be one of ${Object.values(DEVICE_MODE)}`)
+		return;
+	}
+
+
+	if (globalState.deviceMode === DEVICE_MODE.LIVE) {
+		if (process.env.API_KEY === undefined) {
+			console.error("Device needs API_KEY to function");
+			return;
+		}
+
+		if (process.env.SERVER_ENDPOINT === undefined) {
+			console.error("Device needs SERVER_ENDPOINT to function");
+			return;
+		}
+	}
+
+
+
+
 	console.log("starting microphone");
 	// setup mic
 	globalState.micHandle = mic({
@@ -97,7 +126,7 @@ function switchState(nextState) {
 }
 
 
-function primaryLoop() {
+async function primaryLoop() {
 	//console.log("current noise level :", globalState.currentNoiseLevel, "accumulator:", globalState.noiseAccumulator);
 	// handle current state
 	switch (globalState.currentState) {
@@ -105,7 +134,7 @@ function primaryLoop() {
 			handleIdleState();
 			break;
 		case STATES.LISTENING:
-			handleListeningState();
+			await handleListeningState();
 			break;
 	
 		case STATES.THINKING:
@@ -138,7 +167,7 @@ function handleIdleState() {
 }
 
 
-function handleListeningState() {
+async function handleListeningState() {
 	if (globalState.currentNoiseLevel === NOISE_LEVEL.LOW) {
 		globalState.noiseAccumulator += 1;
 	}else {
@@ -147,27 +176,75 @@ function handleListeningState() {
 
 
 	if (globalState.noiseAccumulator > 10) {
-		switchState(STATES.THINKING);
-		stopRecording();
+
+
+		const recordingLengthSeconds = stopRecording();
+
+		if (recordingLengthSeconds <= 1 || globalState.currentRecordingAsString === undefined) {
+			switchState(STATES.IDLE);
+		} else {
+			switchState(STATES.THINKING);
+
+			// call api
+			try {
+				if (globalState.deviceMode === DEVICE_MODE.LIVE) {
+					await handleAskingServerForResponse();
+				} else {
+					handlePlaybackResponse();
+				}
+
+
+				switchState(STATES.TALKING);
+
+				playBase64Pcm16(
+					globalState.assistantPlaybackData,
+					{
+						sampleRate: 24000,
+						channels: 1,
+						bitDepth: 16,
+					},
+					()=>{
+						switchState(STATES.IDLE);
+					}
+				);
+
+			} catch(e) {
+				console.log("Failed to play audio : ", e);
+				switchState(STATES.IDLE);
+			}
+		}
+
+
 	}
 }
 
+function handlePlaybackResponse() {
+	globalState.assistantPlaybackData = globalState.currentRecordingAsString;
+}
+
+async function handleAskingServerForResponse() {
+	console.log("calling endpoit", process.env.SERVER_ENDPOINT, process.env.API_KEY);
+			
+	const response = await fetch(process.env.SERVER_ENDPOINT, {
+   		method: 'POST',
+    	headers: {
+      		'Content-Type': 'application/json',
+   	 	},
+    	body: JSON.stringify({
+			content: globalState.currentRecordingAsString,
+			apiKey: process.env.API_KEY
+		}),
+  	});
+
+	const data = await response.json();
+
+	globalState.assistantPlaybackData = data.content;
+				
+}
+
+
 function handleThinkingState() {
 	globalState.currentState = STATES.SPEAKING;
-	playBase64Pcm16(
-		globalState.currentRecordingAsString,
-		{
-			sampleRate: 24000,
-			channels: 1,
-			bitDepth: 16,
-		},
-		()=>{
-			switchState(STATES.IDLE);
-		}
-	);
-
-	switchState(STATES.TALKING);
-
 }
 
 function handleSpeakingState() {
@@ -240,7 +317,13 @@ function startRecording() {
 function stopRecording() {
 	globalState.isRecording = false;
 	
-	globalState.currentRecordingAsString = Buffer.concat(globalState.currentRecording).toString("base64");
+
+	const buffer = Buffer.concat(globalState.currentRecording);
+	globalState.currentRecordingAsString = buffer.toString("base64");
+	const currentRecordingLength = buffer.length / (SAMPLE_RATE * CHANNELS * BYTES_PER_SAMPLE);
+	console.log("Recording length :", currentRecordingLength);
+
+	return currentRecordingLength;
 }
 // endregion
 
