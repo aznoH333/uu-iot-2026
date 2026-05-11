@@ -14,7 +14,8 @@
     "dotenv": "^17.4.2",
     "mic": "^2.1.2",
     "node-record-lpcm16": "^1.0.1",
-    "speaker": "^0.5.5",
-    "wav": "^1.0.2"
+    "speaker-arm64": "^0.5.2",
+    "wav": "^1.0.2",
+    "webrtcvad": "^1.0.1"
   }
 }
