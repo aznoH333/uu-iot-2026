@@ -130,7 +130,7 @@ export function sendMessageToOpenAi(
             type: "response.create",
             response: {
                 modalities: ["text", "audio"],
-                instructions: `Instructions: [${assistantConfig}]. Answer the user with a short spoken response.`,
+                instructions: `${assistantConfig} Answer the user with a short spoken response.`,
             },
         }));
     });

@@ -1,9 +1,10 @@
 import mic from "mic";
 import 'dotenv/config'
-import wav from "wav"
+// import wav from "wav"
 import fs from "node:fs";
 import Speaker from "speaker";
 import {Readable} from "stream";
+
 
 const SAMPLE_RATE = 24000;
 const CHANNELS = 1;
@@ -16,6 +17,7 @@ const PRE_RECORD_SECONDS = process.env.PRE_RECORD_SECONDS === undefined ? proces
 // rolling buffer
 const MAX_PRE_RECORD_BYTES = SAMPLE_RATE * CHANNELS * BYTES_PER_SAMPLE * PRE_RECORD_SECONDS;
 
+
 const STATES = {
 	IDLE: "IDLE",
 	LISTENING: "LISTENING",
@@ -25,7 +27,7 @@ const STATES = {
 
 const DEVICE_MODE = {
 	LIVE: "LIVE",
-	DEBUG_PLAYBACK: "DEBUG_PLAYBACK",	
+	DEBUG_PLAYBACK: "DEBUG_PLAYBACK",
 };
 
 
@@ -49,7 +51,7 @@ const globalState = {
 
 function main(){
 	console.log("initializing gateway");
-	
+
 	// check device configuration for errors
 	globalState.deviceMode = DEVICE_MODE[process.env.DEVICE_MODE];
 	console.log(`device mode : [${globalState.deviceMode}]`);
@@ -86,7 +88,7 @@ function main(){
 
 		// Optional: choose your ALSA device.
 		// Run `arecord -l` to find it.
-		// device: "plughw:1,0",
+		device: "plughw:1,0",
 	});
 
 
@@ -96,6 +98,7 @@ function main(){
 		const db = rmsToDb(rms);
 		const level = classifyNoise(db);
 		globalState.currentNoiseLevel = level;
+		globalState.currentDb = db;
 
 		if (globalState.isRecording) {
 			globalState.currentRecording.push(data);
@@ -127,7 +130,10 @@ function switchState(nextState) {
 
 
 async function primaryLoop() {
-	//console.log("current noise level :", globalState.currentNoiseLevel, "accumulator:", globalState.noiseAccumulator);
+
+	if (globalState.deviceMode === DEVICE_MODE.DEBUG_PLAYBACK) {
+		console.log("current noise level :", globalState.currentNoiseLevel, "accumulator:", globalState.noiseAccumulator, "current db:", globalState.currentDb);
+	}
 	// handle current state
 	switch (globalState.currentState) {
 		case STATES.IDLE:
@@ -136,7 +142,7 @@ async function primaryLoop() {
 		case STATES.LISTENING:
 			await handleListeningState();
 			break;
-	
+
 		case STATES.THINKING:
 			handleThinkingState();
 			break;
@@ -224,7 +230,7 @@ function handlePlaybackResponse() {
 
 async function handleAskingServerForResponse() {
 	console.log("calling endpoit", process.env.SERVER_ENDPOINT, process.env.API_KEY);
-			
+
 	const response = await fetch(process.env.SERVER_ENDPOINT, {
    		method: 'POST',
     	headers: {
@@ -239,7 +245,7 @@ async function handleAskingServerForResponse() {
 	const data = await response.json();
 
 	globalState.assistantPlaybackData = data.content;
-				
+
 }
 
 
@@ -303,7 +309,7 @@ let recordingCounter = 0;
 function startRecording() {
 
 	globalState.currentRecording = [];
-	
+
 
 	// push prerecord buffer to current recording
 	for (const bufferedChunk of globalState.preRecordChunks) {
@@ -316,7 +322,7 @@ function startRecording() {
 
 function stopRecording() {
 	globalState.isRecording = false;
-	
+
 
 	const buffer = Buffer.concat(globalState.currentRecording);
 	globalState.currentRecordingAsString = buffer.toString("base64");

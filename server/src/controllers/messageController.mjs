@@ -99,6 +99,8 @@ export const createMessage = async (req, res) => {
         }
 
         await new Promise((resolve) => {
+            console.log("using prompt: " + assistantConfig);
+
             sendMessageToOpenAi(
                 content,
                 messageBacklog,
