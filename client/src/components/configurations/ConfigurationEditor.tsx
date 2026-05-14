@@ -6,8 +6,18 @@ interface ConfigurationEditorProps {
   onSave: (id: string, payload: Partial<Pick<AssistantConfiguration, 'assistantName' | 'systemPrompt' | 'topicRestrictions' | 'assistantVoice'>>) => Promise<void>;
 }
 
-const voiceOptions = ['placeholder', 'Ava (Female)', 'James (Male)', 'Emma (Female)', 'Robot'];
-
+const voiceOptions = [
+  { value: 'alloy', label: 'Alloy' },
+  { value: 'ash', label: 'Ash' },
+  { value: 'ballad', label: 'Ballad' },
+  { value: 'coral', label: 'Coral' },
+  { value: 'echo', label: 'Echo' },
+  { value: 'sage', label: 'Sage' },
+  { value: 'shimmer', label: 'Shimmer' },
+  { value: 'verse', label: 'Verse' },
+  { value: 'marin', label: 'Marin' },
+  { value: 'cedar', label: 'Cedar' },
+];
 export function ConfigurationEditor({ configuration, onSave }: ConfigurationEditorProps) {
   const [form, setForm] = useState({ assistantName: '', systemPrompt: '', topicRestrictions: '', assistantVoice: 'placeholder' });
   const [isSaving, setSaving] = useState(false);
@@ -59,8 +69,22 @@ export function ConfigurationEditor({ configuration, onSave }: ConfigurationEdit
 
           <div className="mb-3">
             <label className="form-label">Voice</label>
-            <select className="form-select" value={form.assistantVoice} onChange={(event) => setForm((current) => ({ ...current, assistantVoice: event.target.value }))}>
-              {voiceOptions.map((voice) => <option key={voice} value={voice}>{voice}</option>)}
+
+            <select
+                className="form-select"
+                value={form.assistantVoice}
+                onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      assistantVoice: event.target.value,
+                    }))
+                }
+            >
+              {voiceOptions.map((voice) => (
+                  <option key={voice.value} value={voice.value}>
+                    {voice.label}
+                  </option>
+              ))}
             </select>
           </div>
 
